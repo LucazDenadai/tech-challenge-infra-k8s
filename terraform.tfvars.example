@@ -1,0 +1,5 @@
+# Copie este arquivo para terraform.tfvars antes de rodar o terraform apply
+# O arquivo terraform.tfvars NÃO deve ser commitado (.gitignore já cobre)
+
+cluster_name       = "oficina-mecanica"
+kubernetes_version = "v1.31.0"
