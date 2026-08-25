@@ -25,6 +25,7 @@ A rota de autenticação via Lambda (CARD-29) ainda não existe — será adicio
 ## Pré-requisitos
 
 - Conta AWS com bootstrap já feito (bucket S3 + DynamoDB de state, OIDC/IAM — ver [ADR-011](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-011-bootstrap-aws-backend-remoto-oidc.md))
+- Service-linked roles `AWSServiceRoleForAmazonEKS` e `AWSServiceRoleForElasticLoadBalancing` já existentes na conta (criadas uma única vez via `aws iam create-service-linked-role` — necessário porque a role de CI/CD por si só não pode criá-las na primeira vez que o EKS/ALB é usado na conta, mesmo com `iam:CreateServiceLinkedRole` na policy)
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configurado (`aws configure`)
 - [Terraform >= 1.6](https://developer.hashicorp.com/terraform/install)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) (para inspecionar o cluster após o apply)
