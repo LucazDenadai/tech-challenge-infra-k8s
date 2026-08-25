@@ -23,21 +23,19 @@ module "eks" {
   # Necessário para o AWS Load Balancer Controller assumir uma IAM role via IRSA
   enable_irsa = true
 
-  # Registra automaticamente como admin do cluster (RBAC do EKS, via EKS Access Entry)
-  # quem quer que execute o terraform apply que cria o cluster pela primeira vez. Sem
-  # isso, kubectl/terraform apply seriam barrados dentro do cluster mesmo já
-  # autenticados na AWS via IAM, porque IAM e RBAC do Kubernetes são mecanismos
-  # separados. Só cobre o criador original do cluster — não a role usada em applies
-  # subsequentes, por isso o access_entries abaixo também é necessário.
-  enable_cluster_creator_admin_permissions = true
-
-  # A role usada pelos pipelines (ADR-011) faz applies subsequentes ao cluster já
-  # existente, então não é coberta por enable_cluster_creator_admin_permissions —
-  # precisa da própria entry. Tentativa anterior de registrar isso ANTES do primeiro
-  # apply causou ResourceInUseException (a mesma identidade tentando se registrar
-  # duas vezes, uma via cluster_creator e outra aqui) — corrigido registrando só
-  # depois que o cluster já existia e o "criador" (identidade local que rodou o
-  # primeiro apply) já não era mais a mesma role do pipeline.
+  # IAM e RBAC do Kubernetes são mecanismos separados: sem uma EKS Access Entry,
+  # kubectl/terraform apply são barrados dentro do cluster mesmo já autenticados na
+  # AWS via IAM. access_entries abaixo registra explicitamente a role usada pelos
+  # pipelines (ADR-011) como admin do cluster — essa é a identidade que roda os
+  # applies do dia a dia.
+  #
+  # enable_cluster_creator_admin_permissions NÃO é usado aqui (mesmo sendo a opção
+  # "automática" mais comum): ele registra como admin quem quer que rode o apply que
+  # cria o cluster, e some depois — mas se a identidade que roda applies subsequentes
+  # for a MESMA que criou o cluster (caso da role de CI/CD, que roda todo apply via
+  # pipeline), o Terraform tenta recriar essa entry a cada apply e colide com a que já
+  # existe via access_entries (ResourceInUseException). Só access_entries explícito é
+  # estável para esse cenário de uma única identidade rodando todos os applies.
   access_entries = {
     github_actions = {
       principal_arn = "arn:aws:iam::575225901719:role/tech-challenge-github-actions"
