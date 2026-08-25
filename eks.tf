@@ -24,11 +24,34 @@ module "eks" {
   enable_irsa = true
 
   # Registra automaticamente como admin do cluster (RBAC do EKS, via EKS Access Entry)
-  # quem quer que execute o terraform apply que cria o cluster — hoje é a role
-  # tech-challenge-github-actions (ADR-011), rodando via pipeline OIDC. Sem isso,
-  # kubectl/terraform apply seriam barrados dentro do cluster mesmo já autenticados
-  # na AWS via IAM, porque IAM e RBAC do Kubernetes são mecanismos separados.
+  # quem quer que execute o terraform apply que cria o cluster pela primeira vez. Sem
+  # isso, kubectl/terraform apply seriam barrados dentro do cluster mesmo já
+  # autenticados na AWS via IAM, porque IAM e RBAC do Kubernetes são mecanismos
+  # separados. Só cobre o criador original do cluster — não a role usada em applies
+  # subsequentes, por isso o access_entries abaixo também é necessário.
   enable_cluster_creator_admin_permissions = true
+
+  # A role usada pelos pipelines (ADR-011) faz applies subsequentes ao cluster já
+  # existente, então não é coberta por enable_cluster_creator_admin_permissions —
+  # precisa da própria entry. Tentativa anterior de registrar isso ANTES do primeiro
+  # apply causou ResourceInUseException (a mesma identidade tentando se registrar
+  # duas vezes, uma via cluster_creator e outra aqui) — corrigido registrando só
+  # depois que o cluster já existia e o "criador" (identidade local que rodou o
+  # primeiro apply) já não era mais a mesma role do pipeline.
+  access_entries = {
+    github_actions = {
+      principal_arn = "arn:aws:iam::575225901719:role/tech-challenge-github-actions"
+
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
 }
 
 provider "kubernetes" {
