@@ -23,26 +23,12 @@ module "eks" {
   # Necessário para o AWS Load Balancer Controller assumir uma IAM role via IRSA
   enable_irsa = true
 
-  # A role assumida pelos 4 pipelines (ADR-011) também precisa de permissão dentro do
-  # cluster (RBAC), não só IAM — sem isso, kubectl/terraform apply barram no cluster
-  # mesmo autenticados na AWS. cluster_creator_admin_permissions cobre quem roda o
-  # apply localmente; access_entries cobre a role usada pelo CI/CD.
+  # Registra automaticamente como admin do cluster (RBAC do EKS, via EKS Access Entry)
+  # quem quer que execute o terraform apply que cria o cluster — hoje é a role
+  # tech-challenge-github-actions (ADR-011), rodando via pipeline OIDC. Sem isso,
+  # kubectl/terraform apply seriam barrados dentro do cluster mesmo já autenticados
+  # na AWS via IAM, porque IAM e RBAC do Kubernetes são mecanismos separados.
   enable_cluster_creator_admin_permissions = true
-
-  access_entries = {
-    github_actions = {
-      principal_arn = "arn:aws:iam::575225901719:role/tech-challenge-github-actions"
-
-      policy_associations = {
-        admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = {
-            type = "cluster"
-          }
-        }
-      }
-    }
-  }
 }
 
 provider "kubernetes" {
