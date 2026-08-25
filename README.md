@@ -1,6 +1,6 @@
 # tech-challenge-infra-k8s
 
-Terraform que provisiona o cluster Kubernetes usado pelo [Tech-challenge](https://github.com/LucazDenadai/Tech-challenge) (Atendimento + Estoque).
+Terraform que provisiona o cluster Kubernetes usado pelo [Tech-challenge](https://github.com/LucazDenadai/tech-challenge) (Atendimento + Estoque).
 
 Documentação arquitetural completa (ADRs, RFCs, diagramas) em [tech-challenge-docs](https://github.com/LucazDenadai/tech-challenge-docs).
 
