@@ -1,5 +1,9 @@
 # Copie este arquivo para terraform.tfvars antes de rodar o terraform apply
 # O arquivo terraform.tfvars NÃO deve ser commitado (.gitignore já cobre)
 
-cluster_name       = "oficina-mecanica"
-kubernetes_version = "v1.31.0"
+aws_region          = "us-east-1"
+cluster_name        = "oficina-mecanica"
+kubernetes_version  = "1.31"
+node_instance_type  = "t3.small"
+node_desired_size   = 2
+vpc_cidr            = "10.0.0.0/16"
