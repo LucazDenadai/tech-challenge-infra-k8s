@@ -73,8 +73,13 @@ terraform destroy
 | `cluster_endpoint` | Endereço do API server |
 | `update_kubeconfig_command` | Comando pronto para gerar o kubeconfig local |
 | `vpc_id` | ID da VPC criada |
+| `vpc_cidr` | CIDR block da VPC — consumido por `tech-challenge-infra-db` para liberar acesso ao RDS |
+| `private_subnet_ids` | IDs das subnets privadas onde os nós EKS rodam — consumido por `tech-challenge-infra-db` para o RDS subnet group |
+| `node_security_group_id` | Security group dos nós EKS — consumido por `tech-challenge-infra-db` para liberar acesso ao RDS |
 | `alb_hostname` | Hostname do ALB provisionado pelo Ingress |
 | `api_gateway_url` | URL pública do API Gateway |
+
+Os três primeiros marcados acima (`vpc_cidr`, `private_subnet_ids`, `node_security_group_id`) e `vpc_id` são lidos por outros repositórios via `terraform_remote_state` — não altere seus nomes sem atualizar quem os consome (`tech-challenge-infra-db/main.tf`, `tech-challenge-lambda/infra/main.tf`).
 
 ## O que NÃO commitar
 
