@@ -28,6 +28,11 @@ terraform {
       source  = "hashicorp/time"
       version = "~> 0.11"
     }
+
+    datadog = {
+      source  = "DataDog/datadog"
+      version = "~> 3.45"
+    }
   }
 }
 
@@ -46,4 +51,9 @@ provider "helm" {
       args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
     }
   }
+}
+
+provider "datadog" {
+  api_key = var.datadog_api_key
+  app_key = var.datadog_app_key
 }

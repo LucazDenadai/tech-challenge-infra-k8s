@@ -33,3 +33,15 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.0.0.0/16"
 }
+
+variable "datadog_api_key" {
+  description = "API key do Datadog (ADR-012) — via GitHub Secret DATADOG_API_KEY, nunca hardcoded"
+  type        = string
+  sensitive   = true
+}
+
+variable "datadog_app_key" {
+  description = "Application key do Datadog (ADR-012), necessária para o provider gerenciar dashboards/monitors — via GitHub Secret DATADOG_APP_KEY"
+  type        = string
+  sensitive   = true
+}
