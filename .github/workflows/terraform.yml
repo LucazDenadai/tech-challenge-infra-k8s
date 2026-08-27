@@ -41,6 +41,9 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -input=false
+        env:
+          TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY }}
+          TF_VAR_datadog_app_key: ${{ secrets.DATADOG_APP_KEY }}
 
   apply:
     name: Terraform Apply
@@ -67,3 +70,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
+        env:
+          TF_VAR_datadog_api_key: ${{ secrets.DATADOG_API_KEY }}
+          TF_VAR_datadog_app_key: ${{ secrets.DATADOG_APP_KEY }}

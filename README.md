@@ -24,10 +24,14 @@ Provisiona um cluster **Amazon EKS** real (migração do Kind local do ADR-005, 
 | Namespace `oficina-mecanica` | K8s Namespace | Onde os serviços de aplicação rodam |
 | Namespace `observabilidade` | K8s Namespace | Jaeger, Prometheus, Grafana |
 | AWS Load Balancer Controller | Helm chart | Traduz `Ingress` em Application Load Balancer real |
+| EBS CSI Driver | `aws_eks_addon` + IRSA | Provisiona volumes EBS para PVCs (ex: RabbitMQ) |
 | Ingress `oficina-mecanica-ingress` | `kubernetes_ingress_v1` | Roteia `/atendimento` e `/estoque` para os services |
-| API Gateway (HTTP API) | `aws_apigatewayv2_*` | Rota proxy pública apontando para o hostname do ALB |
+| API Gateway (HTTP API) | `aws_apigatewayv2_*` | Proxy genérico (`ANY /{proxy+}`) para o hostname do ALB — sem authorizer, ver [ADR-013](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-013-autenticacao-authorize-aspnet-nao-api-gateway.md) |
+| Datadog Agent | Helm chart (`datadog.tf`) | Observabilidade corporativa — [ADR-012](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-012-observabilidade-corporativa-datadog.md), dashboards/monitors como código |
 
-A rota de autenticação via Lambda (CARD-29) ainda não existe — será adicionada ao API Gateway quando a Lambda for provisionada em `tech-challenge-lambda`.
+A integração entre o API Gateway e a Lambda de autenticação (`tech-challenge-lambda`, CARD-29) é feita diretamente no repositório da Lambda (`aws_apigatewayv2_route`/`aws_apigatewayv2_integration` apontando para este API Gateway via `terraform_remote_state`) — este repositório provisiona apenas o proxy genérico.
+
+**Custo desligado por padrão:** por controle de orçamento (ver ADR-009, seção de mitigação de custo), este ambiente é destruído fora de janelas de demonstração/avaliação. Se `terraform plan` mostrar `0 resources`, é porque o ambiente está desligado no momento — normal, não é um erro.
 
 ## Pré-requisitos
 
@@ -42,10 +46,15 @@ A rota de autenticação via Lambda (CARD-29) ainda não existe — será adicio
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 
+export TF_VAR_datadog_api_key="..."   # Datadog → Organization Settings → API Keys
+export TF_VAR_datadog_app_key="..."   # Datadog → Organization Settings → Application Keys
+
 terraform init
 terraform plan
 terraform apply
 ```
+
+No pipeline, `TF_VAR_datadog_api_key`/`TF_VAR_datadog_app_key` vêm dos GitHub Secrets `DATADOG_API_KEY`/`DATADOG_APP_KEY` (ver `.github/workflows/terraform.yml`).
 
 Após o apply, gere o kubeconfig local:
 
