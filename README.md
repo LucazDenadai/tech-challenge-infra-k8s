@@ -4,6 +4,13 @@ Terraform que provisiona o cluster Kubernetes usado pelo [Tech-challenge](https:
 
 Documentação arquitetural completa (ADRs, RFCs, diagramas) em [tech-challenge-docs](https://github.com/LucazDenadai/tech-challenge-docs).
 
+Diagramas relevantes para este repositório:
+
+| Diagrama | Conteúdo |
+|---|---|
+| [Componentes](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/diagramas/diagrama-componentes.md) | VPC, EKS, API Gateway e como este repositório se conecta ao RDS e à Lambda |
+| [Sequência — Autenticação via CPF](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/diagramas/diagrama-sequencia-autenticacao.md) | Fluxo completo — o API Gateway provisionado aqui faz apenas proxy, sem authorizer ([ADR-013](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-013-autenticacao-authorize-aspnet-nao-api-gateway.md)) |
+
 ## Estado atual
 
 Provisiona um cluster **Amazon EKS** real (migração do Kind local do ADR-005, conforme [ADR-009](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-009-migracao-aws-e-separacao-repositorios.md), [ADR-010](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-010-sizing-e-regiao-aws.md) e [ADR-011](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-011-bootstrap-aws-backend-remoto-oidc.md)). Ver critérios de aceite em [CARD-27](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/cards/05-fase3-aws/CARD-27-cicd-multi-repo.md) e [CARD-28](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/cards/05-fase3-aws/CARD-28-infra-aws-terraform.md).
