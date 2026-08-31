@@ -42,3 +42,13 @@ output "api_gateway_url" {
   description = "URL pública do API Gateway"
   value       = aws_apigatewayv2_stage.default.invoke_url
 }
+
+output "api_gateway_id" {
+  description = "ID do API Gateway — usado por tech-challenge-lambda para adicionar a rota de autenticação via CPF"
+  value       = aws_apigatewayv2_api.main.id
+}
+
+output "api_gateway_execution_arn" {
+  description = "Execution ARN do API Gateway — usado por tech-challenge-lambda para autorizar a invocação da Lambda"
+  value       = aws_apigatewayv2_api.main.execution_arn
+}
