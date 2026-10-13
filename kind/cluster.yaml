@@ -1,0 +1,13 @@
+# Cluster Kind da Fase 4 (ADR-021): sem AWS, o Kubernetes da demonstração e do CI é o Kind.
+# As portas abaixo expõem na máquina local os Services NodePort de cada serviço e da plataforma.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: oficina
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - { containerPort: 30090, hostPort: 8090 }   # OS
+      - { containerPort: 30091, hostPort: 8091 }   # Billing
+      - { containerPort: 30092, hostPort: 8092 }   # Operações
+      - { containerPort: 30672, hostPort: 15680 }  # RabbitMQ (painel)
+      - { containerPort: 30686, hostPort: 16690 }  # Jaeger (UI)
