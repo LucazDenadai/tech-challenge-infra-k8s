@@ -1,10 +1,14 @@
 name: Terraform
 
+# Terraform do EKS da Fase 3. Na Fase 4 não há conta AWS (ADR-021): só roda quando os .tf mudam,
+# para que os manifests do Kind (kind/) não disparem plan/apply.
 on:
   push:
     branches: [ "main" ]
+    paths: [ "**.tf", ".github/workflows/terraform.yml" ]
   pull_request:
     branches: [ "main" ]
+    paths: [ "**.tf", ".github/workflows/terraform.yml" ]
 
 permissions:
   id-token: write

@@ -13,7 +13,31 @@ Diagramas relevantes para este repositório:
 
 Collection Postman com o fluxo completo contra o API Gateway provisionado aqui: [tech-challenge-docs/postman](https://github.com/LucazDenadai/tech-challenge-docs/tree/main/postman).
 
-## Estado atual
+## Fase 4: Kind, sem AWS
+
+Na Fase 4 não há conta AWS ([ADR-021](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-021-kubernetes-local-sem-aws-fase4.md)). Este repositório continua dono da **plataforma compartilhada**, agora no Kind, em `kind/`:
+
+| Arquivo | O que faz |
+|---|---|
+| `kind/cluster.yaml` | Cluster `oficina` com as portas da demonstração (OS 8090, Billing 8091, Operações 8092, RabbitMQ 15680, Jaeger 16690) |
+| `kind/plataforma/` | Namespace `oficina-mecanica`, RabbitMQ e Jaeger (Kustomize) |
+| `kind/segredos.sh` | Cria os Secrets com valores gerados a cada subida; nenhum segredo versionado |
+| `kind/subir.sh` | Cria o cluster, aplica a plataforma e implanta os três serviços dos repositórios lado a lado |
+| `kind/derrubar.sh` | Apaga o cluster |
+
+```bash
+# tech-challenge-infra-k8s, tech-challenge-os, tech-challenge-billing e tech-challenge-operacoes lado a lado
+./kind/subir.sh      # imprime as URLs e a senha dos usuários do seed
+./kind/derrubar.sh
+```
+
+O CI de cada serviço usa `kind/cluster.yaml`, `kind/plataforma` e `kind/segredos.sh` para implantar só aquele serviço em um Kind efêmero.
+
+**Rollback** de um serviço no cluster: `kubectl -n oficina-mecanica rollout undo deployment/<servico>`, ou reaplicar `k8s/` do serviço com a tag da imagem anterior.
+
+O Terraform abaixo é o da Fase 3 (EKS) e só roda quando um `.tf` muda.
+
+## Estado atual (Fase 3)
 
 Provisiona um cluster **Amazon EKS** real (migração do Kind local do ADR-005, conforme [ADR-009](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-009-migracao-aws-e-separacao-repositorios.md), [ADR-010](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-010-sizing-e-regiao-aws.md) e [ADR-011](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-011-bootstrap-aws-backend-remoto-oidc.md)). Ver critérios de aceite em [CARD-27](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/cards/05-fase3-aws/CARD-27-cicd-multi-repo.md) e [CARD-28](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/cards/05-fase3-aws/CARD-28-infra-aws-terraform.md).
 
