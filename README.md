@@ -35,7 +35,7 @@ O CI de cada serviço usa `kind/cluster.yaml`, `kind/plataforma` e `kind/segredo
 
 **Rollback** de um serviço no cluster: `kubectl -n oficina-mecanica rollout undo deployment/<servico>`, ou reaplicar `k8s/` do serviço com a tag da imagem anterior.
 
-O Terraform abaixo é o da Fase 3 (EKS) e só roda quando um `.tf` muda.
+O Terraform abaixo é o da Fase 3 (EKS). O workflow é manual: sem conta AWS, não roda em push nem em PR.
 
 ## Estado atual (Fase 3)
 
