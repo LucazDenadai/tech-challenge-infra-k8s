@@ -1,0 +1,9 @@
+# Plataforma compartilhada da Fase 4 no Kind (ADR-015, ADR-021): namespace, broker e traces.
+# Os segredos (usuário e senha do RabbitMQ, chave JWT) não ficam aqui: o script e o CI criam o Secret
+# `plataforma-segredos` com valores gerados a cada subida.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - rabbitmq.yaml
+  - jaeger.yaml
