@@ -19,6 +19,8 @@ spec:
           ports:
             - { name: amqp, containerPort: 5672 }
             - { name: painel, containerPort: 15672 }
+            # Plugin rabbitmq_prometheus da imagem oficial: filas e DLQs para o Prometheus (CARD-42b).
+            - { name: metricas, containerPort: 15692 }
           env:
             - name: RABBITMQ_DEFAULT_USER
               valueFrom: { secretKeyRef: { name: plataforma-segredos, key: rabbitmq-usuario } }
@@ -49,3 +51,4 @@ spec:
   ports:
     - { name: amqp, port: 5672, targetPort: amqp }
     - { name: painel, port: 15672, targetPort: painel, nodePort: 30672 }
+    - { name: metricas, port: 15692, targetPort: metricas }

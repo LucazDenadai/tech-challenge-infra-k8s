@@ -1,0 +1,107 @@
+# Logs dos serviços (ADR-022): Loki e o Promtail que lê os arquivos de log do nó.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: observabilidade
+  labels: { app: loki }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: loki }
+  template:
+    metadata:
+      labels: { app: loki }
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: loki
+          image: grafana/loki:3.1.0
+          args: [-config.file=/etc/loki/loki.yaml]
+          ports:
+            - { name: http, containerPort: 3100 }
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/loki }
+            - { name: dados, mountPath: /loki }
+      volumes:
+        - name: config
+          configMap: { name: loki-config }
+        - name: dados
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: observabilidade
+spec:
+  selector: { app: loki }
+  ports:
+    - { name: http, port: 3100, targetPort: http }
+---
+# O Promtail descobre os pods pela API do Kubernetes: leitura de pods só no namespace oficina-mecanica.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: observabilidade
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: promtail-leitura
+  namespace: oficina-mecanica
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: promtail-leitura
+  namespace: oficina-mecanica
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: promtail-leitura }
+subjects:
+  - { kind: ServiceAccount, name: promtail, namespace: observabilidade }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: observabilidade
+  labels: { app: promtail }
+spec:
+  selector:
+    matchLabels: { app: promtail }
+  template:
+    metadata:
+      labels: { app: promtail }
+    spec:
+      serviceAccountName: promtail
+      containers:
+        - name: promtail
+          image: grafana/promtail:3.1.0
+          args: [-config.file=/etc/promtail/promtail.yaml]
+          env:
+            # Comparado com __host__: o Promtail só lê os pods do próprio nó.
+            - name: HOSTNAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/promtail }
+            - { name: logs, mountPath: /var/log/pods, readOnly: true }
+      volumes:
+        - name: config
+          configMap: { name: promtail-config }
+        - name: logs
+          hostPath: { path: /var/log/pods }

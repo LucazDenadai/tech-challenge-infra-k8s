@@ -1,0 +1,84 @@
+# Valida a plataforma e a stack de observabilidade do Kind (ADR-021, ADR-022, CARD-42b): regras de alerta,
+# dashboards e a subida de tudo em um Kind efêmero. Os serviços não entram aqui: cada um tem o próprio deploy no CI.
+name: Kind
+
+on:
+  pull_request:
+    paths: ['kind/**', '.github/workflows/kind.yml']
+  push:
+    branches: [main]
+    paths: ['kind/**', '.github/workflows/kind.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plataforma-e-observabilidade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Configuração e regras do Prometheus
+        run: |
+          docker run --rm -v "$PWD/kind/observabilidade/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool prom/prometheus:v2.53.0 check config /etc/prometheus/prometheus.yml
+
+      - name: Dashboards do Grafana
+        run: |
+          for f in kind/observabilidade/grafana/dashboards/*.json; do
+            jq -e '.uid and .title and (.panels | length > 0)' "$f" >/dev/null
+            echo "ok $f"
+          done
+
+      - uses: helm/kind-action@v1
+        with:
+          config: kind/cluster.yaml
+          cluster_name: oficina
+
+      - name: Plataforma e observabilidade
+        run: |
+          kubectl apply -k kind/plataforma
+          sh kind/segredos.sh
+          kubectl apply -k kind/observabilidade
+          sh kind/segredos.sh observabilidade
+          kubectl -n oficina-mecanica rollout status deployment/rabbitmq --timeout=180s
+          kubectl -n oficina-mecanica rollout status deployment/jaeger --timeout=180s
+          for componente in prometheus grafana loki kube-state-metrics; do
+            kubectl -n observabilidade rollout status "deployment/$componente" --timeout=180s
+          done
+          kubectl -n observabilidade rollout status daemonset/promtail --timeout=120s
+
+      - name: Prometheus carregou as regras e lê o RabbitMQ
+        run: |
+          grupos=$(curl -sf http://localhost:19090/api/v1/rules | jq '.data.groups | length')
+          echo "Grupos de alerta: $grupos"
+          test "$grupos" -eq 3
+          for _ in $(seq 1 12); do
+            saude=$(curl -sf 'http://localhost:19090/api/v1/targets?state=active' \
+              | jq -r '.data.activeTargets[] | select(.labels.job=="rabbitmq") | .health')
+            [ "$saude" = up ] && break
+            sleep 10
+          done
+          echo "RabbitMQ: $saude"
+          test "$saude" = up
+
+      - name: Grafana provisionou fontes e dashboards
+        run: |
+          # A API de fontes de dados exige admin; a busca de dashboards vale para o acesso anônimo.
+          senha=$(kubectl -n observabilidade get secret observabilidade-segredos -o jsonpath='{.data.grafana-senha}' | base64 -d)
+          fontes=$(curl -sf -u "admin:$senha" http://localhost:13000/api/datasources | jq -r '[.[].uid] | sort | join(",")')
+          dashboards=$(curl -sf 'http://localhost:13000/api/search?type=dash-db' | jq -r '[.[].uid] | sort | join(",")')
+          echo "Fontes: $fontes; dashboards: $dashboards"
+          test "$fontes" = "jaeger,loki,prometheus"
+          test "$dashboards" = "oficina-saga,oficina-servicos"
+
+      - name: Diagnóstico
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl -n observabilidade get events --sort-by=.lastTimestamp | tail -40
+          for componente in prometheus grafana loki; do
+            kubectl -n observabilidade logs "deployment/$componente" --tail=80 || true
+          done

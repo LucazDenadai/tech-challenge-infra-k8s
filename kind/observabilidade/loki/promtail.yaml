@@ -1,0 +1,48 @@
+# Lê os logs dos pods do namespace oficina-mecanica no nó e envia ao Loki (CARD-42b). Os rótulos vêm da descoberta
+# de pods do Kubernetes: com caminho fixo, __path__ guarda o padrão (com *), não o arquivo, e não serve para rótulos.
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: oficina-mecanica
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces: { names: [oficina-mecanica] }
+    relabel_configs:
+      # Só os pods do nó deste Promtail (DaemonSet).
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: __host__
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      # O container tem o nome do serviço (os, billing, operacoes) ou do componente (postgres, rabbitmq...).
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: servico
+      - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+        separator: /
+        target_label: __path__
+        replacement: /var/log/pods/*$1/*.log
+    pipeline_stages:
+      # Cada linha vem com o prefixo do runtime (formato CRI) antes do JSON do .NET.
+      - cri: {}
+      - json:
+          expressions:
+            nivel: LogLevel
+      # TraceId e CorrelationId estão nos escopos do log, não no topo do JSON.
+      - regex:
+          expression: 'TraceId:(?P<trace_id>[0-9a-f]{32})'
+      - regex:
+          expression: '"CorrelationId":"(?P<correlation_id>[0-9a-fA-F-]{36})"'
+      - labels:
+          nivel:
+      # Fora dos rótulos: um valor por Saga ou por trace multiplicaria as séries do Loki.
+      - structured_metadata:
+          trace_id:
+          correlation_id:

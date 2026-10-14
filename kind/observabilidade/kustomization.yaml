@@ -1,0 +1,30 @@
+# Stack de observabilidade da Fase 4 no Kind (ADR-022, CARD-42b): Prometheus com alertas, kube-state-metrics,
+# Loki com Promtail e Grafana. O Jaeger fica na plataforma (kind/plataforma). Aplicada pelo subir.sh; o deploy do
+# CI de cada serviço não sobe esta stack.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - prometheus.yaml
+  - kube-state-metrics.yaml
+  - loki.yaml
+  - grafana.yaml
+configMapGenerator:
+  - name: prometheus-config
+    namespace: observabilidade
+    files: [prometheus/prometheus.yml, prometheus/alertas.yml]
+  - name: loki-config
+    namespace: observabilidade
+    files: [loki/loki.yaml]
+  - name: promtail-config
+    namespace: observabilidade
+    files: [loki/promtail.yaml]
+  - name: grafana-fontes
+    namespace: observabilidade
+    files: [grafana/datasources.yaml]
+  - name: grafana-provedor
+    namespace: observabilidade
+    files: [grafana/provedor.yaml]
+  - name: grafana-dashboards
+    namespace: observabilidade
+    files: [grafana/dashboards/saga.json, grafana/dashboards/servicos.json]
