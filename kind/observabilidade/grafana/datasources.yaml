@@ -1,0 +1,22 @@
+# Fontes de dados do Grafana (ADR-022). Do log, o TraceId abre o trace no Jaeger.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: TraceId
+          matcherRegex: 'TraceId:([0-9a-f]{32})'
+          datasourceUid: jaeger
+          url: '$${__value.raw}'
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    url: http://jaeger.oficina-mecanica:16686
