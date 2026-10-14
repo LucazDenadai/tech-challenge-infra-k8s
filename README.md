@@ -19,19 +19,26 @@ Na Fase 4 não há conta AWS ([ADR-021](https://github.com/LucazDenadai/tech-cha
 
 | Arquivo | O que faz |
 |---|---|
-| `kind/cluster.yaml` | Cluster `oficina` com as portas da demonstração (OS 8090, Billing 8091, Operações 8092, RabbitMQ 15680, Jaeger 16690) |
+| `kind/cluster.yaml` | Cluster `oficina` com as portas da demonstração (OS 8090, Billing 8091, Operações 8092, RabbitMQ 15680, Jaeger 16690, Grafana 13000, Prometheus 19090) |
 | `kind/plataforma/` | Namespace `oficina-mecanica`, RabbitMQ e Jaeger (Kustomize) |
+| `kind/observabilidade/` | Prometheus com alertas, kube-state-metrics, Loki com Promtail e Grafana com os dashboards **Saga da OS** e **Serviços** ([ADR-022](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-022-observabilidade-fase4-stack-otel-local.md)) |
+| `kind/observabilidade/runbooks.md` | O que fazer em cada alerta |
 | `kind/segredos.sh` | Cria os Secrets com valores gerados a cada subida; nenhum segredo versionado |
-| `kind/subir.sh` | Cria o cluster, aplica a plataforma e implanta os três serviços dos repositórios lado a lado |
+| `kind/subir.sh` | Cria o cluster, aplica a plataforma e a observabilidade e implanta os três serviços dos repositórios lado a lado |
 | `kind/derrubar.sh` | Apaga o cluster |
 
 ```bash
 # tech-challenge-infra-k8s, tech-challenge-os, tech-challenge-billing e tech-challenge-operacoes lado a lado
-./kind/subir.sh      # imprime as URLs e a senha dos usuários do seed
+./kind/subir.sh                         # imprime as URLs, a senha dos usuários do seed e a do Grafana
+SEM_OBSERVABILIDADE=1 ./kind/subir.sh   # sem Prometheus, Grafana e Loki, para usar menos memória
 ./kind/derrubar.sh
 ```
 
-O CI de cada serviço usa `kind/cluster.yaml`, `kind/plataforma` e `kind/segredos.sh` para implantar só aquele serviço em um Kind efêmero.
+Um cluster criado antes da observabilidade não tem as portas 13000 e 19090: rode `./kind/derrubar.sh` antes do `subir.sh`.
+
+O workflow `Kind` valida, a cada mudança em `kind/`, as regras de alerta (`promtool`), os dashboards e a subida da plataforma e da observabilidade em um Kind efêmero.
+
+O CI de cada serviço usa `kind/cluster.yaml`, `kind/plataforma` e `kind/segredos.sh` para implantar só aquele serviço em um Kind efêmero, sem a observabilidade.
 
 **Rollback** de um serviço no cluster: `kubectl -n oficina-mecanica rollout undo deployment/<servico>`, ou reaplicar `k8s/` do serviço com a tag da imagem anterior.
 
@@ -53,7 +60,7 @@ Provisiona um cluster **Amazon EKS** real (migração do Kind local do ADR-005, 
 | EBS CSI Driver | `aws_eks_addon` + IRSA | Provisiona volumes EBS para PVCs (ex: RabbitMQ) |
 | Ingress `oficina-mecanica-ingress` | `kubernetes_ingress_v1` | Roteia `/atendimento` e `/estoque` para os services |
 | API Gateway (HTTP API) | `aws_apigatewayv2_*` | Proxy genérico (`ANY /{proxy+}`) para o hostname do ALB — sem authorizer, ver [ADR-013](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-013-autenticacao-authorize-aspnet-nao-api-gateway.md) |
-| Datadog Agent | Helm chart (`datadog.tf`) | Observabilidade corporativa — [ADR-012](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-012-observabilidade-corporativa-datadog.md), dashboards/monitors como código |
+| Datadog Agent | Helm chart (`datadog.tf`) | Observabilidade corporativa — [ADR-012](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-012-observabilidade-corporativa-datadog.md), dashboards/monitors como código. Não usado na Fase 4 ([ADR-022](https://github.com/LucazDenadai/tech-challenge-docs/blob/main/adr/ADR-022-observabilidade-fase4-stack-otel-local.md)) |
 
 A integração entre o API Gateway e a Lambda de autenticação (`tech-challenge-lambda`, CARD-29) é feita diretamente no repositório da Lambda (`aws_apigatewayv2_route`/`aws_apigatewayv2_integration` apontando para este API Gateway via `terraform_remote_state`) — este repositório provisiona apenas o proxy genérico.
 

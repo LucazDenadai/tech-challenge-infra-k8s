@@ -6,12 +6,13 @@
 #
 # plataforma-segredos: usuário/senha do RabbitMQ e a chave JWT, compartilhada pelos três serviços.
 # <servico>-segredos: senha do banco do serviço (e, no OS, senha dos usuários do seed e chave da API interna).
+# observabilidade: senha de admin do Grafana, no namespace observabilidade (CARD-42b).
 set -eu
 NS=oficina-mecanica
 
 aleatorio() { head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c "${1:-32}"; }
 
-existe() { kubectl -n "$NS" get secret "$1" >/dev/null 2>&1; }
+existe() { kubectl -n "${2:-$NS}" get secret "$1" >/dev/null 2>&1; }
 
 if ! existe plataforma-segredos; then
     kubectl -n "$NS" create secret generic plataforma-segredos \
@@ -31,6 +32,9 @@ for servico in "$@"; do
                 --from-literal=interno-api-key="$(aleatorio 32)" ;;
         billing|operacoes)
             kubectl -n "$NS" create secret generic "$servico-segredos" --from-literal=db-senha="$(aleatorio 24)" ;;
+        observabilidade)
+            existe observabilidade-segredos observabilidade && continue
+            kubectl -n observabilidade create secret generic observabilidade-segredos --from-literal=grafana-senha="$(aleatorio 20)" ;;
         *)
             echo "Serviço desconhecido: $servico" >&2; exit 1 ;;
     esac

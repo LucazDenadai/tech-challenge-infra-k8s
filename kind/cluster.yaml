@@ -11,3 +11,5 @@ nodes:
       - { containerPort: 30092, hostPort: 8092 }   # Operações
       - { containerPort: 30672, hostPort: 15680 }  # RabbitMQ (painel)
       - { containerPort: 30686, hostPort: 16690 }  # Jaeger (UI)
+      - { containerPort: 30300, hostPort: 13000 }  # Grafana (observabilidade, ADR-022)
+      - { containerPort: 30909, hostPort: 19090 }  # Prometheus (observabilidade, ADR-022)
