@@ -1,0 +1,63 @@
+# Alertas do fluxo da Saga (CARD-42b). Cada regra aponta para a seção do runbook com o mesmo nome.
+# Sem Alertmanager: o alerta disparado aparece no Prometheus (/alerts) e no Grafana (ADR-022).
+groups:
+  - name: saga
+    rules:
+      - alert: SagaEmAcaoManual
+        expr: sum(os_sagas_por_estado{estado="ManualActionRequired"}) > 0
+        for: 1m
+        labels: { severidade: critica }
+        annotations:
+          resumo: "{{ $value }} Saga(s) parada(s) esperando ação do Admin."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#sagaemacaomanual
+
+      # O Pix vence em 30 minutos (ADR-019); depois disso, o webhook ou a reconciliação do Billing deveriam ter
+      # resolvido. ReconcilingPayment não tem prazo na Saga (o Billing segue consultando), então só este alerta o cobre.
+      - alert: PagamentoPendente
+        expr: max by (estado) (os_saga_idade_etapa_segundos{estado=~"AwaitingPayment|ReconcilingPayment"}) > 1800
+        for: 1m
+        labels: { severidade: aviso }
+        annotations:
+          resumo: "Há Saga em {{ $labels.estado }} há {{ $value | humanizeDuration }}."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#pagamentopendente
+
+      # Estados com prazo e reenvio (CARD-40b): 5 minutos por tentativa, até 3 reenvios; sem resposta, ação manual aos
+      # 20 minutos. Passar de 10 minutos quer dizer que o participante não respondeu nem ao primeiro reenvio.
+      - alert: SagaParada
+        expr: >
+          max by (estado) (os_saga_idade_etapa_segundos{estado=~"RequestingQuote|ReservingInventory|CreatingPayment|StartingExecution|ReleasingReservation|Compensating|CancellingExecution"}) > 600
+        for: 1m
+        labels: { severidade: aviso }
+        annotations:
+          resumo: "Saga parada em {{ $labels.estado }} há {{ $value | humanizeDuration }}."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#sagaparada
+
+  - name: mensageria
+    rules:
+      # Mensagens esperando análise em uma DLQ (<servico>.<canal>.dlq). A série da fila existe desde que ela é
+      # declarada, com valor 0, então a primeira mensagem já dispara. O contador mensagens_dlq_total não serve aqui:
+      # a série dele nasce valendo 1 e increase() não vê esse primeiro envio.
+      - alert: DlqCrescendo
+        expr: max by (queue) (rabbitmq_detailed_queue_messages_ready{queue=~".+[.]dlq"}) > 0
+        labels: { severidade: aviso }
+        annotations:
+          resumo: "{{ $value }} mensagem(ns) esperando análise na DLQ {{ $labels.queue }}."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#dlqcrescendo
+
+  - name: plataforma
+    rules:
+      - alert: DeployIndisponivel
+        expr: kube_deployment_status_replicas_unavailable{namespace="oficina-mecanica"} > 0
+        for: 5m
+        labels: { severidade: critica }
+        annotations:
+          resumo: "Deployment {{ $labels.deployment }} com réplicas indisponíveis há 5 minutos."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#deployindisponivel
+
+      - alert: ServicoForaDoAr
+        expr: up{job="servicos"} == 0 or (kube_deployment_status_replicas_available{namespace="oficina-mecanica", deployment=~"os|billing|operacoes"} == 0)
+        for: 2m
+        labels: { severidade: critica }
+        annotations:
+          resumo: "Serviço {{ $labels.servico }}{{ $labels.deployment }} sem réplica respondendo."
+          runbook_url: https://github.com/LucazDenadai/tech-challenge-infra-k8s/blob/main/kind/observabilidade/runbooks.md#servicoforadoar

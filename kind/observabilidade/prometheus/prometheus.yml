@@ -1,0 +1,47 @@
+# Coleta da stack de observabilidade da Fase 4 (ADR-022, CARD-42b).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alertas.yml
+
+scrape_configs:
+  # Serviços da Saga: pods do namespace oficina-mecanica com a anotação prometheus.io/scrape (k8s/deployment.yaml de
+  # cada serviço). O rótulo `servico` vem do label `app` do pod.
+  - job_name: servicos
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces: { names: [oficina-mecanica] }
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: "true"
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: servico
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
+  # Filas do RabbitMQ, uma série por fila (inclusive as DLQs). Plugin rabbitmq_prometheus da imagem oficial.
+  - job_name: rabbitmq
+    metrics_path: /metrics/detailed
+    params:
+      family: [queue_coarse_metrics]
+    static_configs:
+      - targets: [rabbitmq.oficina-mecanica:15692]
+
+  # Estado dos Deployments (réplicas disponíveis e indisponíveis) para o alerta de deploy.
+  - job_name: kube-state-metrics
+    static_configs:
+      - targets: [kube-state-metrics:8080]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
